@@ -203,6 +203,15 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Frontend
+node_modules/
+frontend/dist/
+
+# Local application state
+backend/gmail-token.json
+secrets/
+backend/*.db
+
 # Ruff stuff:
 .ruff_cache/
 

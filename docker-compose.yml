@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////app/data/leave_requests.db
+      GMAIL_CREDENTIALS_FILE: /app/secrets/credentials.json
+      GMAIL_TOKEN_FILE: /app/data/gmail-token.json
+      PUBLIC_API_URL: https://${APP_DOMAIN}
+    volumes:
+      - app_data:/app/data
+      - ./secrets:/app/secrets:ro
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  app_data:

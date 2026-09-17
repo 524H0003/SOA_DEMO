@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+node_modules
+frontend/dist
+backend/.venv
+backend/*.db
+backend/gmail-token.json
+secrets
