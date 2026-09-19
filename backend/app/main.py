@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import get_db, init_db
-from .models import LeaveRequest
-from .schemas import LeaveRequestCreate, LeaveRequestResponse, PubSubEnvelope
-from .services.gmail import send_leave_request
+from .models import AbsentRequest
+from .schemas import AbsentRequestCreate, AbsentRequestResponse, PubSubEnvelope
+from .services.gmail import send_absent_request
 from .services.gmail_watch import decode_pubsub_data, sync_history
 
 settings = get_settings()
@@ -36,23 +36,23 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/leave-requests", response_model=list[LeaveRequestResponse])
-def list_leave_requests(db: Session = Depends(get_db)) -> list[LeaveRequest]:
-    return list(db.scalars(select(LeaveRequest).order_by(LeaveRequest.created_at.desc())))
+@app.get("/api/absent-requests", response_model=list[AbsentRequestResponse])
+def list_absent_requests(db: Session = Depends(get_db)) -> list[AbsentRequest]:
+    return list(db.scalars(select(AbsentRequest).order_by(AbsentRequest.created_at.desc())))
 
 
-@app.post("/api/leave-requests", response_model=LeaveRequestResponse, status_code=status.HTTP_201_CREATED)
-def create_leave_request(payload: LeaveRequestCreate, db: Session = Depends(get_db)) -> LeaveRequest:
-    request = LeaveRequest(**payload.model_dump())
-    db.add(request)
-    db.commit()
-    db.refresh(request)
+@app.post("/api/absent-requests", response_model=AbsentRequestResponse, status_code=status.HTTP_201_CREATED)
+def create_absent_request(payload: AbsentRequestCreate, db: Session = Depends(get_db)) -> AbsentRequest:
+    request = AbsentRequest(**payload.model_dump())
     try:
-        request.gmail_message_id = send_leave_request(request, settings)
+        db.add(request)
+        db.flush()
+        request.gmail_message_id = send_absent_request(request, settings)
         db.commit()
     except RuntimeError:
         db.rollback()
         raise HTTPException(status_code=503, detail="Gmail is not configured")
+    db.refresh(request)
     return request
 
 

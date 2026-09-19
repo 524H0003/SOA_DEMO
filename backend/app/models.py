@@ -7,24 +7,24 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
 
-class LeaveStatus(StrEnum):
+class AbsentStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
 
 
-class LeaveRequest(Base):
-    __tablename__ = "leave_requests"
+class AbsentRequest(Base):
+    __tablename__ = "absent_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     employee_name: Mapped[str] = mapped_column(String(120))
     employee_email: Mapped[str] = mapped_column(String(320))
     manager_email: Mapped[str] = mapped_column(String(320))
-    leave_type: Mapped[str] = mapped_column(String(80))
+    absent_type: Mapped[str] = mapped_column(String(80))
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date] = mapped_column(Date)
     reason: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default=LeaveStatus.PENDING.value)
+    status: Mapped[str] = mapped_column(String(20), default=AbsentStatus.PENDING.value)
     gmail_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     decision_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

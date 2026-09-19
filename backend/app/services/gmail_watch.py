@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import Settings
-from ..models import GmailSyncState, LeaveRequest, LeaveStatus
+from ..models import AbsentRequest, AbsentStatus, GmailSyncState
 from .email import parse_decision
 from .gmail import gmail_service
 
@@ -39,12 +39,12 @@ def process_message(db: Session, message: dict[str, Any]) -> bool:
     if not command:
         return False
     action, request_id = command
-    request = db.get(LeaveRequest, request_id)
+    request = db.get(AbsentRequest, request_id)
     if not request or request.manager_email.lower() != sender:
         return False
-    if request.status != LeaveStatus.PENDING.value:
+    if request.status != AbsentStatus.PENDING.value:
         return False
-    request.status = LeaveStatus.APPROVED.value if action == "approve" else LeaveStatus.REJECTED.value
+    request.status = AbsentStatus.APPROVED.value if action == "approve" else AbsentStatus.REJECTED.value
     request.decision_message_id = message.get("id")
     request.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()

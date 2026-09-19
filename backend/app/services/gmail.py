@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from ..config import Settings
-from ..models import LeaveRequest
+from ..models import AbsentRequest
 from .email import build_message, encode_message
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -26,7 +26,7 @@ def gmail_service(settings: Settings) -> Any:
     return build("gmail", "v1", credentials=credentials, cache_discovery=False)
 
 
-def send_leave_request(request: LeaveRequest, settings: Settings) -> str:
+def send_absent_request(request: AbsentRequest, settings: Settings) -> str:
     service = gmail_service(settings)
     response = (
         service.users()
@@ -41,5 +41,5 @@ def start_watch(settings: Settings) -> dict[str, Any]:
     service = gmail_service(settings)
     if not settings.google_cloud_project:
         raise RuntimeError("GOOGLE_CLOUD_PROJECT is required to start Gmail watch")
-    topic = f"projects/{settings.google_cloud_project}/topics/gmail-leave-updates"
+    topic = f"projects/{settings.google_cloud_project}/topics/gmail-absent-updates"
     return service.users().watch(userId="me", body={"topicName": topic, "labelIds": ["INBOX"]}).execute()

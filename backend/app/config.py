@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    app_name: str = "Leave Request API"
-    database_url: str = "sqlite:///./leave_requests.db"
+    app_name: str = "Absent Request API"
+    database_url: str = "sqlite:///./absent_requests.db"
     frontend_origin: str = "http://localhost:5173"
     gmail_sender: str = ""
     gmail_credentials_file: str = ""
