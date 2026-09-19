@@ -51,9 +51,9 @@ def create_absent_request(payload: AbsentRequestCreate, db: Session = Depends(ge
         db.flush()
         request.gmail_message_id = send_absent_request(request, settings)
         db.commit()
-    except RuntimeError:
+    except RuntimeError as error:
         db.rollback()
-        raise HTTPException(status_code=503, detail="Gmail is not configured")
+        raise HTTPException(status_code=503, detail=str(error)) from error
     db.refresh(request)
     return request
 

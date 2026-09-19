@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     gmail_credentials_json: str = ""
     gmail_credentials_json_base64: str = ""
     gmail_token_file: str = "gmail-token.json"
+    gmail_token_json_base64: str = ""
     email_template_file: str = "templates/absent_request.html"
     google_cloud_project: str = ""
     pubsub_verification_token: str = ""

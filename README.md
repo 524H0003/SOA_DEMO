@@ -28,7 +28,13 @@ Tạo `.env` ở root từ `.env.docker.example`. Gmail OAuth cần credential J
 export GMAIL_CREDENTIALS_JSON_BASE64="$(base64 -w 0 backend/credentials.json)"
 ```
 
-Hoặc đặt giá trị tương ứng trong `backend/.env`. Trên VPS, dùng Nginx reverse proxy cấp TLS và chạy `docker compose exec app python start_watch.py` sau khi cấu hình credential. Lệnh này đăng ký watch và lưu `historyId` ban đầu vào SQLite.
+OAuth cũng cần token đã cấp quyền vì container không có trình duyệt để đăng nhập trong lúc xử lý request. Chạy backend local một lần để tạo `gmail-token.json`, sau đó truyền token vào env:
+
+```bash
+export GMAIL_TOKEN_JSON_BASE64="$(base64 -w 0 backend/gmail-token.json)"
+```
+
+Hoặc mount `GMAIL_TOKEN_FILE` vào container. Trên VPS, dùng Nginx reverse proxy cấp TLS và chạy `docker compose exec app python start_watch.py` sau khi cấu hình credential. Lệnh này đăng ký watch và lưu `historyId` ban đầu vào SQLite.
 
 Quản lý phản hồi email bằng đúng cú pháp `APPROVE AR-1` hoặc `REJECT AR-1`. Backend xác nhận email đến từ đúng `manager_email`, đọc Gmail History API sau thông báo Pub/Sub, rồi frontend tự polling để hiển thị trạng thái mới. `mailto:` chỉ mở email soạn sẵn; nó không phải callback.
 

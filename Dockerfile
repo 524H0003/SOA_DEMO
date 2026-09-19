@@ -22,6 +22,7 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app ./app
+COPY backend/templates ./templates
 COPY backend/start_watch.py ./start_watch.py
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=frontend-build /src/frontend/dist /usr/share/nginx/html
