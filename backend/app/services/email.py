@@ -1,6 +1,8 @@
 import base64
 import html
 import re
+from pathlib import Path
+from string import Template
 from email.message import EmailMessage
 from urllib.parse import quote
 
@@ -40,15 +42,17 @@ def build_html(request: AbsentRequest, settings: Settings) -> str:
         "reason": html.escape(request.reason),
     }
     mailto = html.escape(build_mailto(request, settings), quote=True)
-    return f"""<html><body>
-<h2>Absent request AR-{request.id}</h2>
-<p><strong>Employee:</strong> {values['employee_name']} ({values['employee_email']})</p>
-<p><strong>Type:</strong> {values['absent_type']}</p>
-<p><strong>Dates:</strong> {values['start_date']} to {values['end_date']}</p>
-<p><strong>Reason:</strong> {values['reason']}</p>
-<p>Reply using exactly <strong>APPROVE AR-{request.id}</strong> or <strong>REJECT AR-{request.id}</strong>.</p>
-<p><a href="{mailto}">Open a prefilled reply email</a></p>
-</body></html>"""
+    template_path = Path(settings.email_template_file)
+    if not template_path.is_absolute():
+        template_path = Path(__file__).resolve().parents[2] / template_path
+    template = Template(template_path.read_text(encoding="utf-8"))
+    return template.safe_substitute(
+        **values,
+        request_id=str(request.id),
+        approve_command=f"APPROVE AR-{request.id}",
+        reject_command=f"REJECT AR-{request.id}",
+        mailto=mailto,
+    )
 
 
 def build_message(request: AbsentRequest, settings: Settings) -> EmailMessage:

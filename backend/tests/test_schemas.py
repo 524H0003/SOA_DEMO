@@ -12,7 +12,6 @@ def test_absent_request_rejects_reversed_dates() -> None:
         AbsentRequestCreate(
             employee_name="Nguyen Van A",
             employee_email="employee@example.com",
-            manager_email="manager@example.com",
             absent_type="Annual",
             start_date=date(2026, 9, 20),
             end_date=date(2026, 9, 19),

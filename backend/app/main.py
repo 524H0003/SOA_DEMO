@@ -43,7 +43,9 @@ def list_absent_requests(db: Session = Depends(get_db)) -> list[AbsentRequest]:
 
 @app.post("/api/absent-requests", response_model=AbsentRequestResponse, status_code=status.HTTP_201_CREATED)
 def create_absent_request(payload: AbsentRequestCreate, db: Session = Depends(get_db)) -> AbsentRequest:
-    request = AbsentRequest(**payload.model_dump())
+    if not settings.manager_email:
+        raise HTTPException(status_code=500, detail="MANAGER_EMAIL is not configured")
+    request = AbsentRequest(**payload.model_dump(), manager_email=settings.manager_email)
     try:
         db.add(request)
         db.flush()
