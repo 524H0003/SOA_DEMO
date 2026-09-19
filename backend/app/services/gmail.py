@@ -56,25 +56,6 @@ def _save_token(credentials: Credentials, token_path: Path) -> None:
     token_path.write_text(credentials.to_json(), encoding="utf-8")
 
 
-def _oauth_flow(settings: Settings) -> InstalledAppFlow:
-    if settings.gmail_credentials_json_base64:
-        try:
-            raw_credentials = base64.b64decode(settings.gmail_credentials_json_base64).decode("utf-8")
-            client_config = json.loads(raw_credentials)
-        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise RuntimeError("GMAIL_CREDENTIALS_JSON_BASE64 is not valid Google OAuth JSON") from error
-        return InstalledAppFlow.from_client_config(client_config, SCOPES)
-    if settings.gmail_credentials_json:
-        try:
-            client_config = json.loads(settings.gmail_credentials_json)
-        except json.JSONDecodeError as error:
-            raise RuntimeError("GMAIL_CREDENTIALS_JSON is not valid Google OAuth JSON") from error
-        return InstalledAppFlow.from_client_config(client_config, SCOPES)
-    if settings.gmail_credentials_file:
-        return InstalledAppFlow.from_client_secrets_file(settings.gmail_credentials_file, SCOPES)
-    raise RuntimeError("Set GMAIL_CREDENTIALS_JSON_BASE64 or GMAIL_CREDENTIALS_FILE to use Gmail API")
-
-
 def send_absent_request(request: AbsentRequest, settings: Settings) -> str:
     service = gmail_service(settings)
     response = (
