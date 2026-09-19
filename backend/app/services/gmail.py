@@ -5,6 +5,7 @@ from typing import Any
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
@@ -19,8 +20,14 @@ def gmail_service(settings: Settings) -> Any:
     token_path = Path(settings.gmail_token_file)
     credentials = _load_token(settings, token_path)
     if credentials and credentials.expired and credentials.refresh_token:
-        credentials.refresh(Request())
-        _save_token(credentials, token_path)
+        try:
+            credentials.refresh(Request())
+        except RefreshError as error:
+            raise RuntimeError(
+                "Gmail OAuth refresh failed. Re-authorize the account and update GMAIL_TOKEN_JSON_BASE64."
+            ) from error
+        if not settings.gmail_token_json_base64:
+            _save_token(credentials, token_path)
     if not credentials or not credentials.valid:
         raise RuntimeError(
             "Gmail OAuth token is missing or expired. Run OAuth once outside the container "
