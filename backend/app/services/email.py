@@ -19,17 +19,22 @@ def parse_decision(text: str) -> tuple[str, int] | None:
     return match.group(1).lower(), int(match.group(2))
 
 
-def build_mailto(request: AbsentRequest, settings: Settings) -> str:
+def build_decision_mailto(request: AbsentRequest, settings: Settings, action: str) -> str:
+    command = f"{action.upper()} AR-{request.id}"
     subject = f"Re: Absent request AR-{request.id}"
     body = (
         f"{request.employee_name},\n\n"
-        f"Please reply with exactly one command:\nAPPROVE AR-{request.id}\n"
-        f"or\nREJECT AR-{request.id}\n"
+        f"{command}\n"
     )
     return (
-        f"mailto:{quote(request.manager_email)}?"
+        f"mailto:{quote(settings.gmail_sender)}?"
         f"subject={quote(subject)}&body={quote(body)}"
     )
+
+
+def build_mailto(request: AbsentRequest, settings: Settings) -> str:
+    """Build the approve link for callers that still need one decision link."""
+    return build_decision_mailto(request, settings, "APPROVE")
 
 
 def build_html(request: AbsentRequest, settings: Settings) -> str:
@@ -41,7 +46,8 @@ def build_html(request: AbsentRequest, settings: Settings) -> str:
         "end_date": request.end_date.isoformat(),
         "reason": html.escape(request.reason),
     }
-    mailto = html.escape(build_mailto(request, settings), quote=True)
+    approve_mailto = html.escape(build_decision_mailto(request, settings, "APPROVE"), quote=True)
+    reject_mailto = html.escape(build_decision_mailto(request, settings, "REJECT"), quote=True)
     template_path = Path(settings.email_template_file)
     if not template_path.is_absolute():
         template_path = Path(__file__).resolve().parents[2] / template_path
@@ -51,7 +57,8 @@ def build_html(request: AbsentRequest, settings: Settings) -> str:
         request_id=str(request.id),
         approve_command=f"APPROVE AR-{request.id}",
         reject_command=f"REJECT AR-{request.id}",
-        mailto=mailto,
+        approve_mailto=approve_mailto,
+        reject_mailto=reject_mailto,
     )
 
 
