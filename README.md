@@ -22,7 +22,13 @@ npm install
 npm run dev
 ```
 
-Tạo `.env` ở root từ `.env.docker.example`. Gmail OAuth cần credential JSON, Gmail API scope `gmail.modify`, Google Cloud Pub/Sub topic `gmail-absent-updates` và push subscription trỏ tới HTTPS public URL `/api/webhooks/gmail?token=PUBSUB_VERIFICATION_TOKEN`. Trên VPS, dùng Nginx reverse proxy cấp TLS và chạy `docker compose exec app python start_watch.py` sau khi cấu hình credential. Lệnh này đăng ký watch và lưu `historyId` ban đầu vào SQLite.
+Tạo `.env` ở root từ `.env.docker.example`. Gmail OAuth cần credential JSON, Gmail API scope `gmail.modify`, Google Cloud Pub/Sub topic `gmail-absent-updates` và push subscription trỏ tới HTTPS public URL `/api/webhooks/gmail?token=PUBSUB_VERIFICATION_TOKEN`. Có thể truyền OAuth JSON qua `GMAIL_CREDENTIALS_JSON_BASE64` thay vì mount file:
+
+```bash
+export GMAIL_CREDENTIALS_JSON_BASE64="$(base64 -w 0 backend/credentials.json)"
+```
+
+Hoặc đặt giá trị tương ứng trong `backend/.env`. Trên VPS, dùng Nginx reverse proxy cấp TLS và chạy `docker compose exec app python start_watch.py` sau khi cấu hình credential. Lệnh này đăng ký watch và lưu `historyId` ban đầu vào SQLite.
 
 Quản lý phản hồi email bằng đúng cú pháp `APPROVE AR-1` hoặc `REJECT AR-1`. Backend xác nhận email đến từ đúng `manager_email`, đọc Gmail History API sau thông báo Pub/Sub, rồi frontend tự polling để hiển thị trạng thái mới. `mailto:` chỉ mở email soạn sẵn; nó không phải callback.
 
