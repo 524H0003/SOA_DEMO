@@ -8,7 +8,7 @@ Script `send_hello_world.py` gửi một email text đơn giản bằng Gmail AP
 - Một tài khoản Gmail có quyền gửi email.
 - Một Google Cloud project đã bật Gmail API.
 - OAuth 2.0 Desktop App client JSON, lưu tại `script/credentials.json` hoặc truyền qua `--credentials`.
-- Các package Python trong `backend/requirements.txt`, đặc biệt là `google-api-python-client`, `google-auth-httplib2` và `google-auth-oauthlib`.
+- Các package Python trong `script/requirements.txt`: `google-api-python-client`, `google-auth-httplib2` và `google-auth-oauthlib`.
 - Trình duyệt để hoàn tất OAuth ở lần chạy đầu tiên.
 
 ## 1. Tạo Google Cloud project và bật Gmail API
@@ -25,31 +25,30 @@ Tài liệu chính thức:
 - [Gmail API: gửi email](https://developers.google.com/gmail/api/guides/sending)
 - [OAuth 2.0 cho ứng dụng desktop](https://developers.google.com/identity/protocols/oauth2/native-app)
 
-## 2. Cài dependency
+## 2. Tạo môi trường ảo và cài dependency
 
-Từ thư mục gốc repository:
+Từ thư mục gốc repository, tạo một môi trường ảo riêng cho script:
 
 ```bash
-cd backend
+cd script
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-cd ..
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Nếu chưa có virtual environment, xem hướng dẫn chạy backend trong [README.md](../README.md).
+Sau khi kích hoạt môi trường ảo, chạy script từ thư mục `script`:
 
 ## 3. Gửi email
 
-Chạy từ thư mục gốc:
-
 ```bash
-python script/send_hello_world.py nguoi-nhan@example.com
+python send_hello_world.py nguoi-nhan@example.com
 ```
 
 Tuỳ chỉnh subject và nội dung:
 
 ```bash
-python script/send_hello_world.py nguoi-nhan@example.com \
+python send_hello_world.py nguoi-nhan@example.com \
   --subject "Test Gmail API" \
   --body "Hello World từ Gmail API"
 ```
@@ -57,7 +56,7 @@ python script/send_hello_world.py nguoi-nhan@example.com \
 Nếu đặt OAuth client ở nơi khác, truyền đường dẫn rõ ràng:
 
 ```bash
-python script/send_hello_world.py nguoi-nhan@example.com \
+python send_hello_world.py nguoi-nhan@example.com \
   --credentials /path/to/credentials.json \
   --token /path/to/token.json
 ```
