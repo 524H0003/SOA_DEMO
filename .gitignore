@@ -155,6 +155,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Local Gmail OAuth files
+script/credentials.json
+script/token.json
+
 # Spyder project settings
 .spyderproject
 .spyproject
