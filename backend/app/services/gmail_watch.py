@@ -40,8 +40,6 @@ def process_message(db: Session, message: dict[str, Any]) -> bool:
         return False
     action, request_id = command
     request = db.get(AbsentRequest, request_id)
-    if not request or request.manager_email.lower() != sender:
-        return False
     if request.status != AbsentStatus.PENDING.value:
         return False
     request.status = AbsentStatus.APPROVED.value if action == "approve" else AbsentStatus.REJECTED.value
