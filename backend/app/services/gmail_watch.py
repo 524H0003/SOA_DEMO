@@ -78,8 +78,8 @@ def decode_pubsub_data(data: str) -> dict[str, str]:
 def start_watch(settings: Settings) -> dict[str, Any]:
     """Đăng ký Gmail watch với Pub/Sub topic"""
     service = gmail_service(settings)
-    if not settings.pubsub_oidc_audience:
-        raise RuntimeError("PUBSUB_OIDC_AUDIENCE is required to start Gmail watch")
+    if not settings.pubsub_oidc_topic:
+        raise RuntimeError("PUBSUB_OIDC_TOPIC is required to start Gmail watch")
     # Extract project from audience: projects/{project}/topics/{topic}
-    topic = settings.pubsub_oidc_audience
+    topic = settings.pubsub_oidc_topic
     return service.users().watch(userId="me", body={"topicName": topic, "labelIds": ["INBOX"]}).execute()

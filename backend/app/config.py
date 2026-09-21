@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     email_template_file: str = "templates/absent_request.html"
     pubsub_audience: str = ""
     pubsub_oidc_audience: str = ""
+    pubsub_oidc_topic: str = ""
     pubsub_service_account_email: str = ""
     public_api_url: str = "http://localhost:8000"
 
