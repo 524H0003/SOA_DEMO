@@ -1,8 +1,8 @@
 from datetime import date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
@@ -23,14 +23,18 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    absent_requests: Mapped[list["AbsentRequest"]] = relationship(
+        back_populates="employee",
+        cascade="all, delete-orphan",
+        foreign_keys=["AbsentRequest.employee_id"],
+    )
+
 
 class AbsentRequest(Base):
     __tablename__ = "absent_requests"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    employee_name: Mapped[str] = mapped_column(String(120))
-    employee_email: Mapped[str] = mapped_column(String(320))
-    manager_email: Mapped[str] = mapped_column(String(320))
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     absent_type: Mapped[str] = mapped_column(String(80))
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date] = mapped_column(Date)
@@ -40,6 +44,11 @@ class AbsentRequest(Base):
     decision_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    employee: Mapped["User"] = relationship(
+        back_populates="absent_requests",
+        foreign_keys=[employee_id],
+    )
 
 
 class GmailSyncState(Base):

@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 class AbsentRequestCreate(BaseModel):
     employee_name: str = Field(min_length=2, max_length=120)
-    employee_email: EmailStr
     absent_type: str = Field(min_length=2, max_length=80)
     start_date: date
     end_date: date
@@ -24,7 +23,6 @@ class AbsentRequestResponse(BaseModel):
 
     id: int
     employee_name: str
-    employee_email: EmailStr
     manager_email: EmailStr
     absent_type: str
     start_date: date

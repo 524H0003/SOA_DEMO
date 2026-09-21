@@ -51,4 +51,21 @@ docker compose up -d
 docker compose exec app python start_watch.py
 ```
 
+### Build và chạy nhanh bằng Docker
+
+Nếu credential đã nằm trong `backend/credentials.json`, token đã nằm trong
+`backend/gmail-token.json` và cấu hình nằm trong `backend/.env`, có thể chạy:
+
+```bash
+./build-and-run.sh
+```
+
+Script sẽ truyền hai file Google vào `GMAIL_CREDENTIALS_JSON_BASE64` và
+`GMAIL_TOKEN_JSON_BASE64`, sau đó chạy ứng dụng tại `http://localhost:8080`.
+Có thể đổi cổng hoặc tên image/container:
+
+```bash
+HOST_PORT=80 IMAGE_NAME=absent-desk CONTAINER_NAME=absent-desk ./build-and-run.sh
+```
+
 Nginx trong image phục vụ static frontend và proxy `/api` tới Uvicorn nội bộ. Pub/Sub push URL dùng `https://<APP_DOMAIN>/api/webhooks/gmail?token=<PUBSUB_VERIFICATION_TOKEN>` qua Nginx reverse proxy HTTPS của VPS. Dữ liệu SQLite và Gmail token nằm trong Docker volume `app_data`; OAuth client nằm ở `secrets/` và chỉ được mount read-only vào app. Không commit `.env`, `secrets/` hoặc credential Google vào git.

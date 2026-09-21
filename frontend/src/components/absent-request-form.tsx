@@ -5,8 +5,6 @@ import { FieldLabel, Input, Textarea } from "./ui";
 
 const schema = z
   .object({
-    employee_name: z.string().min(2, "Nhập họ tên nhân viên"),
-    employee_email: z.string().email("Email nhân viên không hợp lệ"),
     absent_type: z.string().min(2, "Chọn loại vắng mặt"),
     start_date: z.string().min(1, "Chọn ngày bắt đầu"),
     end_date: z.string().min(1, "Chọn ngày kết thúc"),
@@ -32,8 +30,6 @@ export function AbsentRequestForm({
 }) {
   const form = useForm({
     defaultValues: {
-      employee_name: employeeName,
-      employee_email: "",
       absent_type: "Annual",
       start_date: "",
       end_date: "",
@@ -67,41 +63,6 @@ export function AbsentRequestForm({
         <p>Quản lý sẽ nhận email và phản hồi trực tiếp bằng Gmail.</p>
       </div>
       <div className="form-grid">
-        <form.Field name="employee_name">
-          {(field) => (
-            <div style={{ display: "none" }}>
-              <FieldLabel>Nhân viên</FieldLabel>
-              <Input value={field.state.value} readOnly />
-            </div>
-          )}
-        </form.Field>
-        <form.Field
-          name="employee_email"
-          validators={{
-            onChange: ({ value }) =>
-              !z.string().email().safeParse(value).success
-                ? "Email không hợp lệ"
-                : undefined,
-          }}
-        >
-          {(field) => (
-            <div>
-              <FieldLabel>Email nhân viên</FieldLabel>
-              <Input
-                type="email"
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-                placeholder="ban@congty.vn"
-              />
-              {errorText(field.state.meta.errors) && (
-                <span className="error">
-                  {errorText(field.state.meta.errors)}
-                </span>
-              )}
-            </div>
-          )}
-        </form.Field>
         <form.Field name="absent_type">
           {(field) => (
             <div>

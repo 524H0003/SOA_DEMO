@@ -2,6 +2,7 @@
 .gitignore
 .env
 node_modules
+**/node_modules
 frontend/dist
 backend/.venv
 backend/*.db

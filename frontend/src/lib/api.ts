@@ -15,13 +15,27 @@ export type AbsentRequest = {
 };
 
 export type AbsentRequestPayload = Omit<AbsentRequest, "id" | "status" | "created_at" | "decided_at">;
-export type AbsentRequestFormPayload = Omit<AbsentRequestPayload, "manager_email">;
+export type AbsentRequestFormPayload = Omit<AbsentRequestPayload, "manager_email" | "employee_email" | "employee_name">;
+
+export type LoginPayload = {
+  username: string;
+  password: string;
+};
+
+export type AuthToken = {
+  access_token: string;
+  token_type: string;
+};
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = window.localStorage.getItem("absent.accessToken");
   const response = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   });
   if (!response.ok) {
@@ -29,6 +43,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(body?.detail ?? "Không thể kết nối tới hệ thống");
   }
   return response.json() as Promise<T>;
+}
+
+export function login(payload: LoginPayload) {
+  return request<AuthToken>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function createAbsentRequest(payload: AbsentRequestFormPayload) {
