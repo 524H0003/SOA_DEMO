@@ -24,9 +24,8 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     absent_requests: Mapped[list["AbsentRequest"]] = relationship(
-        back_populates="employee",
+        back_populates="user",
         cascade="all, delete-orphan",
-        foreign_keys=["AbsentRequest.employee_id"],
     )
 
 
@@ -45,9 +44,9 @@ class AbsentRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    employee: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(
         back_populates="absent_requests",
-        foreign_keys=[employee_id],
+        primaryjoin="AbsentRequest.employee_id == User.id"
     )
 
 

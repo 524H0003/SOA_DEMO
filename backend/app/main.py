@@ -128,7 +128,6 @@ def create_absent_request(
     request = AbsentRequest(
         **payload.model_dump(),
         employee_id=current_user.id,
-        manager_email=settings.manager_email,
     )
     try:
         db.add(request)

@@ -39,8 +39,8 @@ def build_mailto(request: AbsentRequest, settings: Settings) -> str:
 
 def build_html(request: AbsentRequest, settings: Settings) -> str:
     values = {
-        "employee_name": html.escape(request.employee_name),
-        "employee_email": html.escape(request.employee_email),
+        "employee_name": html.escape(request.user.username),
+        "employee_email": html.escape(request.user.email),
         "absent_type": html.escape(request.absent_type),
         "start_date": request.start_date.isoformat(),
         "end_date": request.end_date.isoformat(),
@@ -68,9 +68,9 @@ def build_html(request: AbsentRequest, settings: Settings) -> str:
 
 def build_message(request: AbsentRequest, settings: Settings) -> EmailMessage:
     message = EmailMessage()
-    message["To"] = request.manager_email
+    message["To"] = settings.manager_email
     message["From"] = settings.gmail_sender
-    message["Subject"] = f"Absent request AR-{request.id} from {request.employee_name}"
+    message["Subject"] = f"Absent request AR-{request.id} from {request.user.username}"
     message.set_content(f"Reply APPROVE AR-{request.id} or REJECT AR-{request.id}.")
     message.add_alternative(build_html(request, settings), subtype="html")
     return message

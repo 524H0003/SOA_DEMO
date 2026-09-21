@@ -40,7 +40,9 @@ docker run --detach \
   --env "GMAIL_TOKEN_JSON_BASE64=$token_base64" \
   --env "DATABASE_URL=sqlite:////app/data/absent_requests.db" \
   --publish "$HOST_PORT:80" \
-  --volume "$ROOT_DIR/backend/data:/app/data" \
   "$IMAGE_NAME"
 
 printf 'Container is running: http://localhost:%s\n' "$HOST_PORT"
+
+printf 'Creating default user...\n'
+docker exec "$CONTAINER_NAME" python start_watch.py create-user --username test --email lmao@example.com --password test.com.vn
