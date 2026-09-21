@@ -103,9 +103,11 @@ def verify_pubsub_oidc_token(req: Request) -> bool:
         # Kiểm tra email service account phát hành token
         expected_email = settings.pubsub_service_account_email
         if not expected_email or claim.get("email") != expected_email:
+            print(expected_email, claim.get("email"))
             return False
         return True
     except Exception:
+        print("verifiy oauth2 error")
         return False
 
 
@@ -185,10 +187,6 @@ async def gmail_webhook(
     if settings.pubsub_oidc_audience:
         if not verify_pubsub_oidc_token(req):
             raise HTTPException(status_code=401, detail="Invalid OIDC token")
-    # Fallback: xác thực verification token cũ
-    elif settings.pubsub_verification_token:
-        if token != settings.pubsub_verification_token:
-            raise HTTPException(status_code=401, detail="Invalid Pub/Sub subscription")
     
     try:
         notification = decode_pubsub_data(envelope.message.data)

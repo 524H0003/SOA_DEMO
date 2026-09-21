@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     gmail_token_file: str = "gmail-token.json"
     gmail_token_json_base64: str = ""
     email_template_file: str = "templates/absent_request.html"
-    pubsub_verification_token: str = ""
     pubsub_audience: str = ""
     pubsub_oidc_audience: str = ""
     pubsub_service_account_email: str = ""
