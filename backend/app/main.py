@@ -106,8 +106,8 @@ def verify_pubsub_oidc_token(req: Request) -> bool:
             print(expected_email, claim.get("email"))
             return False
         return True
-    except Exception:
-        print("verifiy oauth2 error")
+    except Exception as e:
+        print("verifiy oauth2 error", auth_header, token, settings.pubsub_oidc_audience, e)
         return False
 
 
