@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from sqlalchemy import UUID
 
 
 class AbsentRequestCreate(BaseModel):
@@ -20,7 +21,7 @@ class AbsentRequestCreate(BaseModel):
 class AbsentRequestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
+    id: UUID
     absent_type: str
     start_date: date
     end_date: date

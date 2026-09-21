@@ -158,7 +158,7 @@ def create_absent_request(
     payload: AbsentRequestCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> AbsentRequest:
+) -> AbsentRequestResponse:
     if not settings.manager_email:
         raise HTTPException(status_code=500, detail="MANAGER_EMAIL is not configured")
     request = AbsentRequest(
@@ -174,7 +174,7 @@ def create_absent_request(
         db.rollback()
         raise HTTPException(status_code=503, detail=str(error)) from error
     db.refresh(request)
-    return request
+    return AbsentRequestResponse.model_validate(request)
 
 
 @app.post("/api/webhooks/gmail", status_code=status.HTTP_204_NO_CONTENT)
