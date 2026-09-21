@@ -6,7 +6,6 @@ from typing import Any
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from ..config import Settings
@@ -39,15 +38,21 @@ def gmail_service(settings: Settings) -> Any:
 def _load_token(settings: Settings, token_path: Path) -> Credentials | None:
     if settings.gmail_token_json_base64:
         try:
-            token_json = base64.b64decode(settings.gmail_token_json_base64).decode("utf-8")
+            token_json = base64.b64decode(settings.gmail_token_json_base64).decode(
+                "utf-8"
+            )
             return Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise RuntimeError("GMAIL_TOKEN_JSON_BASE64 is not valid OAuth token JSON") from error
+            raise RuntimeError(
+                "GMAIL_TOKEN_JSON_BASE64 is not valid OAuth token JSON"
+            ) from error
     if token_path.exists():
         try:
             return Credentials.from_authorized_user_file(str(token_path), SCOPES)
         except (ValueError, json.JSONDecodeError) as error:
-            raise RuntimeError(f"GMAIL_TOKEN_FILE is not valid OAuth token JSON: {token_path}") from error
+            raise RuntimeError(
+                f"GMAIL_TOKEN_FILE is not valid OAuth token JSON: {token_path}"
+            ) from error
     return None
 
 
@@ -61,15 +66,9 @@ def send_absent_request(request: AbsentRequest, settings: Settings) -> str:
     response = (
         service.users()
         .messages()
-        .send(userId="me", body={"raw": encode_message(build_message(request, settings))})
+        .send(
+            userId="me", body={"raw": encode_message(build_message(request, settings))}
+        )
         .execute()
     )
     return str(response["id"])
-
-
-def start_watch(settings: Settings) -> dict[str, Any]:
-    service = gmail_service(settings)
-    if not settings.google_cloud_project:
-        raise RuntimeError("GOOGLE_CLOUD_PROJECT is required to start Gmail watch")
-    topic = f"projects/{settings.google_cloud_project}/topics/gmail-absent-updates"
-    return service.users().watch(userId="me", body={"topicName": topic, "labelIds": ["INBOX"]}).execute()

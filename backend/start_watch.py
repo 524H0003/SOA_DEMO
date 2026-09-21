@@ -1,11 +1,12 @@
 from app.config import get_settings
 from app.db import SessionLocal, init_db
-from app.models import GmailSyncState, User
-from app.services.gmail import start_watch
+from app.models import User
 from app.main import get_password_hash
 
 
-def create_user(username: str, email: str, password: str, is_admin: bool = False) -> None:
+def create_user(
+    username: str, email: str, password: str, is_admin: bool = False
+) -> None:
     """Create a user via terminal."""
     init_db()
     hashed_password = get_password_hash(password)
@@ -23,31 +24,19 @@ def create_user(username: str, email: str, password: str, is_admin: bool = False
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Create users or start Gmail watch.")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    
+
     # Create user command
     create_parser = subparsers.add_parser("create-user", help="Create a new user")
     create_parser.add_argument("--username", required=True, help="Username")
     create_parser.add_argument("--email", required=True, help="Email")
     create_parser.add_argument("--password", required=True, help="Password")
     create_parser.add_argument("--admin", action="store_true", help="Create as admin")
-    
+
     # Start watch command
-    watch_parser = subparsers.add_parser("start-watch", help="Start Gmail watch")
-    
     args = parser.parse_args()
-    
+
     if args.command == "create-user":
         create_user(args.username, args.email, args.password, args.admin)
-    elif args.command == "start-watch":
-        init_db()
-        settings = get_settings()
-        response = start_watch(settings)
-        with SessionLocal() as db:
-            state = db.get(GmailSyncState, 1) or GmailSyncState(id=1)
-            state.last_history_id = str(response["historyId"])
-            state.watch_expiration = None
-            db.add(state)
-            db.commit()
-        print(response)

@@ -73,3 +73,13 @@ def sync_history(db: Session, settings: Settings, history_id: str) -> int:
 
 def decode_pubsub_data(data: str) -> dict[str, str]:
     return json.loads(base64.b64decode(data).decode("utf-8"))
+
+
+def start_watch(settings: Settings) -> dict[str, Any]:
+    """Đăng ký Gmail watch với Pub/Sub topic"""
+    service = gmail_service(settings)
+    if not settings.pubsub_oidc_audience:
+        raise RuntimeError("PUBSUB_OIDC_AUDIENCE is required to start Gmail watch")
+    # Extract project from audience: projects/{project}/topics/{topic}
+    topic = settings.pubsub_oidc_audience
+    return service.users().watch(userId="me", body={"topicName": topic, "labelIds": ["INBOX"]}).execute()

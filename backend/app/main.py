@@ -1,7 +1,7 @@
 import json
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -22,7 +22,9 @@ from .models import AbsentRequest, User
 from .schemas import AbsentRequestCreate, AbsentRequestResponse, PubSubEnvelope
 from .schemas_auth import Token, TokenPayload, UserCreate, UserLogin
 from .services.gmail import send_absent_request
-from .services.gmail_watch import decode_pubsub_data, sync_history
+from .services.gmail_watch import decode_pubsub_data, sync_history, start_watch
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 settings = get_settings()
 
@@ -84,9 +86,40 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     return current_user
 
 
+def verify_pubsub_oidc_token(req: Request) -> bool:
+    """Xác minh OIDC Token do Pub/Sub gửi kèm trong Header"""
+    auth_header = req.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return False
+
+    token = auth_header.split("Bearer ")[1]
+
+    try:
+        claim = id_token.verify_oauth2_token(
+            token,
+            google_requests.Request(),
+            audience=settings.pubsub_oidc_audience,
+        )
+        # Kiểm tra email service account phát hành token
+        expected_email = settings.pubsub_service_account_email
+        if not expected_email or claim.get("email") != expected_email:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    # Khởi động Gmail watch
+    try:
+        settings = get_settings()
+        if settings.pubsub_oidc_audience:
+            result = start_watch(settings)
+            print(f"Gmail watch started: {result}")
+    except Exception as e:
+        print(f"Failed to start Gmail watch: {e}")
     yield
 
 
@@ -143,15 +176,20 @@ def create_absent_request(
 
 @app.post("/api/webhooks/gmail", status_code=status.HTTP_204_NO_CONTENT)
 async def gmail_webhook(
+    req: Request,
     envelope: PubSubEnvelope,
     token: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> None:
-    if (
-        settings.pubsub_verification_token
-        and token != settings.pubsub_verification_token
-    ):
-        raise HTTPException(status_code=401, detail="Invalid Pub/Sub subscription")
+    # Xác thực OIDC token từ Pub/Sub
+    if settings.pubsub_oidc_audience:
+        if not verify_pubsub_oidc_token(req):
+            raise HTTPException(status_code=401, detail="Invalid OIDC token")
+    # Fallback: xác thực verification token cũ
+    elif settings.pubsub_verification_token:
+        if token != settings.pubsub_verification_token:
+            raise HTTPException(status_code=401, detail="Invalid Pub/Sub subscription")
+    
     try:
         notification = decode_pubsub_data(envelope.message.data)
         history_id = notification["historyId"]
@@ -191,3 +229,4 @@ def login_user(
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     return create_access_token(user.username, user.is_admin)
+
