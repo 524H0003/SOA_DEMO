@@ -142,10 +142,11 @@ def health() -> dict[str, str]:
 @app.get("/api/absent-requests", response_model=list[AbsentRequestResponse])
 def list_absent_requests(
     db: Session = Depends(get_db),
-) -> list[AbsentRequest]:
-    return list(
-        db.scalars(select(AbsentRequest).order_by(AbsentRequest.created_at.desc()))
-    )
+) -> list[AbsentRequestResponse]:
+    requests = db.scalars(select(AbsentRequest).order_by(AbsentRequest.created_at.desc()))
+    return [
+        AbsentRequestResponse.model_validate(request) for request in requests
+    ]
 
 
 @app.post(

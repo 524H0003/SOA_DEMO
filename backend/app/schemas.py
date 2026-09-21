@@ -20,7 +20,7 @@ class AbsentRequestCreate(BaseModel):
 class AbsentRequestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: str
     absent_type: str
     start_date: date
     end_date: date
