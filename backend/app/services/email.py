@@ -14,10 +14,24 @@ COMMAND_PATTERN = re.compile(r"\b(APPROVE|REJECT)\s+AR-([a-f0-9-]{36})\b", re.IG
 
 
 def parse_decision(text: str) -> tuple[str, uuid.UUID] | None:
-    match = COMMAND_PATTERN.search(text)
-    if not match:
+    """
+    Parse decision from email text. Only checks the first non-empty line of the
+    message body (after subject) to avoid matching commands in quoted original email.
+    """
+    # Split into lines, skip subject line (first line), find first non-empty body line
+    lines = text.splitlines()
+    if len(lines) < 2:
         return None
-    return match.group(1).lower(), uuid.UUID(match.group(2))
+    
+    # Get the first non-empty line after subject (the actual reply content)
+    for line in lines[1:]:
+        line = line.strip()
+        if line:  # Found first non-empty line of reply
+            match = COMMAND_PATTERN.search(line)
+            if match:
+                return match.group(1).lower(), uuid.UUID(match.group(2))
+            break  # Only check the first non-empty line
+    return None
 
 
 def build_decision_mailto(
