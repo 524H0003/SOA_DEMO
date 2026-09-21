@@ -1,8 +1,14 @@
 from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
-from sqlalchemy import UUID
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class AbsentRequestCreate(BaseModel):
@@ -21,7 +27,15 @@ class AbsentRequestCreate(BaseModel):
 class AbsentRequestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: str
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def convert_uuid_to_str(cls, v):
+        if isinstance(v, UUID):
+            return str(v)
+        return v
+
     absent_type: str
     start_date: date
     end_date: date
