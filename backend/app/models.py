@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from enum import StrEnum
+import uuid
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -16,7 +18,7 @@ class AbsentStatus(StrEnum):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
@@ -32,8 +34,8 @@ class User(Base):
 class AbsentRequest(Base):
     __tablename__ = "absent_requests"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    employee_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     absent_type: Mapped[str] = mapped_column(String(80))
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date] = mapped_column(Date)

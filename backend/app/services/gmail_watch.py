@@ -33,13 +33,14 @@ def _message_text(payload: dict[str, Any]) -> str:
 
 def process_message(db: Session, message: dict[str, Any]) -> bool:
     payload = message.get("payload", {})
-    sender = parseaddr(_header(payload.get("headers", []), "From"))[1].lower()
     subject = _header(payload.get("headers", []), "Subject")
     command = parse_decision(f"{subject}\n{_message_text(payload)}")
     if not command:
         return False
     action, request_id = command
-    request = db.get(AbsentRequest, request_id)
+    request = db.scalar(select(AbsentRequest).where(AbsentRequest.id == request_id))
+    if not request:
+        return False
     if request.status != AbsentStatus.PENDING.value:
         return False
     request.status = AbsentStatus.APPROVED.value if action == "approve" else AbsentStatus.REJECTED.value
@@ -63,6 +64,7 @@ def sync_history(db: Session, settings: Settings, history_id: str) -> int:
     for history in result.get("history", []):
         for entry in history.get("messagesAdded", []):
             message = service.users().messages().get(userId="me", id=entry["message"]["id"], format="full").execute()
+            print(message)
             processed += int(process_message(db, message))
     state.last_history_id = history_id
     db.commit()

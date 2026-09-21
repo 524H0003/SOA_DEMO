@@ -1,6 +1,7 @@
 import base64
 import html
 import re
+import uuid
 from pathlib import Path
 from string import Template
 from email.message import EmailMessage
@@ -9,14 +10,14 @@ from urllib.parse import quote
 from ..config import Settings
 from ..models import AbsentRequest
 
-COMMAND_PATTERN = re.compile(r"\b(APPROVE|REJECT)\s+AR-(\d+)\b", re.IGNORECASE)
+COMMAND_PATTERN = re.compile(r"\b(APPROVE|REJECT)\s+AR-([a-f0-9-]{36})\b", re.IGNORECASE)
 
 
-def parse_decision(text: str) -> tuple[str, int] | None:
+def parse_decision(text: str) -> tuple[str, uuid.UUID] | None:
     match = COMMAND_PATTERN.search(text)
     if not match:
         return None
-    return match.group(1).lower(), int(match.group(2))
+    return match.group(1).lower(), uuid.UUID(match.group(2))
 
 
 def build_decision_mailto(
