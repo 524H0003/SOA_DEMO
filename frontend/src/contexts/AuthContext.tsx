@@ -2,8 +2,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 
+interface UserInfo {
+  username: string;
+  email: string;
+  is_admin: boolean;
+}
+
 interface AuthContextType {
-  user: string | null;
+  user: UserInfo | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -18,32 +24,26 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const checkAuth = async () => {
     try {
-      const response = await fetch(`/api/absent-requests`, {
+      const response = await fetch(`/api/auth/me`, {
         method: 'GET',
         credentials: 'include',
       });
       
       if (response.ok) {
-        // If we can access protected resource, we're authenticated
-        // Try to get username from a user info endpoint or use stored username
-        const storedUser = localStorage.getItem('absent.username');
-        if (storedUser) {
-          setUser(storedUser);
-        }
+        const userData = await response.json();
+        setUser(userData);
       } else {
         setUser(null);
-        localStorage.removeItem('absent.username');
       }
     } catch (error) {
       setUser(null);
-      localStorage.removeItem('absent.username');
     } finally {
       setIsLoading(false);
     }
@@ -70,9 +70,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       // Backend sets HttpOnly cookie automatically
-      // Store username in localStorage for display purposes
-      localStorage.setItem('absent.username', username);
-      setUser(username);
+      // Fetch user info after successful login
+      await checkAuth();
       queryClient.clear();
     } catch (error) {
       throw error;
@@ -86,7 +85,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         credentials: 'include',
       });
     } finally {
-      localStorage.removeItem('absent.username');
       setUser(null);
       queryClient.clear();
       navigate('/login');

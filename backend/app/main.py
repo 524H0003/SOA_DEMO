@@ -1,14 +1,8 @@
 import json
 from contextlib import asynccontextmanager
-
-from fastapi import Depends, FastAPI, HTTPException, Query, status, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -27,8 +21,6 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 settings = get_settings()
-
-# Password hashing
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -248,6 +240,13 @@ def login_user(
     )
     
     return {"message": "Login successful", "user": user.username}
+
+
+@app.get("/api/auth/me")
+def get_current_user_info(
+    current_user: User = Depends(get_current_active_user),
+):
+    return {"username": current_user.username, "email": current_user.email, "is_admin": current_user.is_admin}
 
 @app.post("/api/auth/logout")
 def logout_user(response: Response):
