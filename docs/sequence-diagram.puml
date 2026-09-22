@@ -1,0 +1,52 @@
+@startuml
+!define RECTANGLE class
+
+skinparam sequence {
+    ArrowColor #333333
+    ActorBorderColor #333333
+    ActorBackgroundColor #FFFFFF
+    ParticipantBorderColor #333333
+    ParticipantBackgroundColor #F5F5F5
+    LifeLineBackgroundColor #FFFFFF
+    LifeLineBorderColor #333333
+}
+
+actor "Người dùng" as User
+participant "Backend API\n(FastAPI)" as Backend
+participant "Gmail API\n(Google)" as GmailAPI
+participant "Pub/Sub\n(Google Cloud)" as PubSub
+
+== Khởi tạo Gmail Watch ==
+activate Backend
+Backend -> GmailAPI: start_watch() - Đăng ký Gmail watch
+GmailAPI -> PubSub: Tạo subscription cho topic
+PubSub --> GmailAPI: Trả về subscription info
+GmailAPI --> Backend: Trả về watch result (historyId, expiration)
+deactivate Backend
+
+== Gửi email tới người dùng ==
+User -> Backend: Yêu cầu gửi email (qua API)
+activate Backend
+Backend -> GmailAPI: Gửi email HTML tới User
+GmailAPI -> User: Email
+GmailAPI --> Backend: Trả về message_id
+deactivate Backend
+
+== Người dùng phản hồi qua Gmail ==
+User -> GmailAPI: Reply email với command
+GmailAPI -> PubSub: Push notification (base64 encoded)\n{historyId, emailAddress}
+PubSub -> Backend: POST /api/webhooks/gmail\n(PubSubEnvelope + OIDC token)
+activate Backend
+Backend -> Backend: verify_pubsub_oidc_token() - Xác thực OIDC
+Backend -> Backend: decode_pubsub_data() - Giải mã base64
+Backend -> GmailAPI: sync_history() - Lấy lịch sử từ historyId
+GmailAPI --> Backend: Trả về messagesAdded[]
+loop Xử lý từng message
+    Backend -> Backend: process_message() - Parse subject/body
+    Backend -> Backend: Xử lý logic nghiệp vụ\n(cập nhật trạng thái, lưu kết quả)
+end
+Backend -> Backend: Cập nhật last_history_id
+Backend --> PubSub: 204 No Content
+deactivate Backend
+
+@enduml
