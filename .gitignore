@@ -231,3 +231,7 @@ __marimo__/
 
 # Typescript
 *.tsbuildinfo
+*.js
+
+# PlantUML
+out

@@ -1,14 +1,8 @@
 import json
 from contextlib import asynccontextmanager
-
-from fastapi import Depends, FastAPI, HTTPException, Query, status, Request
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -27,8 +21,6 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 settings = get_settings()
-
-# Password hashing
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -57,7 +49,7 @@ def create_access_token(username: str, is_admin: bool) -> Token:
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
     db: Session = Depends(get_db),
 ) -> User:
     credentials_exception = HTTPException(
@@ -65,6 +57,12 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    # Get token from cookie
+    token = request.cookies.get("access_token")
+    if not token:
+        raise credentials_exception
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -131,6 +129,7 @@ app.add_middleware(
     allow_origins=[settings.frontend_origin],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 
@@ -181,7 +180,6 @@ def create_absent_request(
 async def gmail_webhook(
     req: Request,
     envelope: PubSubEnvelope,
-    token: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> None:
     # Xác thực OIDC token từ Pub/Sub
@@ -219,13 +217,40 @@ def register_user(
     return create_access_token(user.username, user.is_admin)
 
 
-@app.post("/api/auth/login", response_model=Token)
+@app.post("/api/auth/login")
 def login_user(
     payload: UserLogin,
+    response: Response,
     db: Session = Depends(get_db),
-) -> Token:
+):
     user = db.scalar(select(User).where(User.username == payload.username))
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
-    return create_access_token(user.username, user.is_admin)
+    
+    token = create_access_token(user.username, user.is_admin)
+    
+    # Set JWT token in HttpOnly cookie
+    response.set_cookie(
+        key="access_token",
+        value=token.access_token,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    
+    return {"message": "Login successful", "user": user.username}
+
+
+@app.get("/api/auth/me")
+def get_current_user_info(
+    current_user: User = Depends(get_current_active_user),
+):
+    return {"username": current_user.username, "email": current_user.email, "is_admin": current_user.is_admin}
+
+@app.post("/api/auth/logout")
+def logout_user(response: Response):
+    # Clear the JWT cookie
+    response.delete_cookie("access_token")
+    return {"message": "Logout successful"}
 

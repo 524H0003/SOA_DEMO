@@ -1,10 +1,14 @@
-FROM node:22-alpine AS frontend-build
+FROM ghcr.io/pnpm/pnpm:12 AS base
+RUN pnpm runtime set node 24 -g
+COPY frontend /app
+WORKDIR /app
 
-WORKDIR /src/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
+FROM base AS prod-deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+
+FROM base AS build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm run build
 
 FROM python:3.12-slim
 
@@ -25,7 +29,7 @@ COPY backend/app ./app
 COPY backend/templates ./templates
 COPY backend/start_watch.py ./start_watch.py
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=frontend-build /src/frontend/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \

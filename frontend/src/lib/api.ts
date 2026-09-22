@@ -30,12 +30,11 @@ export type AuthToken = {
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = window.localStorage.getItem("absent.accessToken");
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
+    credentials: 'include',
     ...options,
   });
   if (!response.ok) {
@@ -43,13 +42,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(body?.detail ?? "Không thể kết nối tới hệ thống");
   }
   return response.json() as Promise<T>;
-}
-
-export function login(payload: LoginPayload) {
-  return request<AuthToken>("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
 }
 
 export function createAbsentRequest(payload: AbsentRequestFormPayload) {
