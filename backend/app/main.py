@@ -3,9 +3,9 @@ import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 import bcrypt
 from sqlalchemy import select
@@ -27,7 +27,7 @@ settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 # JWT settings
-SECRET_KEY = "your-secret-key-here"  # Change this in production
+SECRET_KEY = secrets.token_hex(16)  # Change this in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
