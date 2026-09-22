@@ -10,13 +10,14 @@ from urllib.parse import quote
 from ..config import Settings
 from ..models import AbsentRequest
 
-COMMAND_PATTERN = re.compile(r"\b(APPROVE|REJECT)\s+AR-([a-f0-9-]{36})\b", re.IGNORECASE)
+COMMAND_PATTERN = re.compile(r"\b(APPROVE|REJECT)\s+AR-([a-f0-9-]{36})\s+CODE-([A-Z0-9]{6})\b", re.IGNORECASE)
 
 
-def parse_decision(text: str) -> tuple[str, uuid.UUID] | None:
+def parse_decision(text: str) -> tuple[str, uuid.UUID, str] | None:
     """
     Parse decision from email text. Only checks the first non-empty line of the
     message body (after subject) to avoid matching commands in quoted original email.
+    Also extracts security_code from the email body.
     """
     # Split into lines, skip subject line (first line), find first non-empty body line
     lines = text.splitlines()
@@ -29,7 +30,10 @@ def parse_decision(text: str) -> tuple[str, uuid.UUID] | None:
         if line:  # Found first non-empty line of reply
             match = COMMAND_PATTERN.search(line)
             if match:
-                return match.group(1).lower(), uuid.UUID(match.group(2))
+                decision = match.group(1).lower()
+                request_id = match.group(2)
+                security_code = match.group(3)
+                return decision, uuid.UUID(request_id), security_code
             break  # Only check the first non-empty line
     return None
 
@@ -37,7 +41,7 @@ def parse_decision(text: str) -> tuple[str, uuid.UUID] | None:
 def build_decision_mailto(
     request: AbsentRequest, settings: Settings, action: str
 ) -> str:
-    command = f"{action.upper()} AR-{request.id}"
+    command = f"{action.upper()} AR-{request.id} CODE-{request.security_code}"
     subject = f"Re: Absent request AR-{request.id}"
     body = f"{command}"
 
@@ -74,8 +78,8 @@ def build_html(request: AbsentRequest, settings: Settings) -> str:
     return template.safe_substitute(
         **values,
         request_id=str(request.id),
-        approve_command=f"APPROVE AR-{request.id}",
-        reject_command=f"REJECT AR-{request.id}",
+        approve_command=f"APPROVE AR-{request.id} CODE-{request.security_code}",
+        reject_command=f"REJECT AR-{request.id} CODE-{request.security_code}",
         approve_mailto=approve_mailto,
         reject_mailto=reject_mailto,
     )
@@ -86,7 +90,7 @@ def build_message(request: AbsentRequest, settings: Settings) -> EmailMessage:
     message["To"] = settings.manager_email
     message["From"] = settings.gmail_sender
     message["Subject"] = f"Absent request AR-{request.id} from {request.user.username}"
-    message.set_content(f"Reply APPROVE AR-{request.id} or REJECT AR-{request.id}.")
+    message.set_content(f"Reply APPROVE AR-{request.id} CODE-{request.security_code} or REJECT AR-{request.id} CODE-{request.security_code}.")
     message.add_alternative(build_html(request, settings), subtype="html")
     return message
 

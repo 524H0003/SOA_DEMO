@@ -37,11 +37,13 @@ def process_message(db: Session, message: dict[str, Any]) -> bool:
     command = parse_decision(f"{subject}\n{_message_text(payload)}")
     if not command:
         return False
-    action, request_id = command
+    action, request_id, security_code = command
     request = db.scalar(select(AbsentRequest).where(AbsentRequest.id == request_id))
     if not request:
         return False
     if request.status != AbsentStatus.PENDING.value:
+        return False
+    if request.security_code != security_code:
         return False
     request.status = AbsentStatus.APPROVED.value if action == "approve" else AbsentStatus.REJECTED.value
     request.decision_message_id = message.get("id")

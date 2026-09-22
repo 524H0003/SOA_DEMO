@@ -24,7 +24,7 @@ class AbsentRequestCreate(BaseModel):
         return self
 
 
-class AbsentRequestResponse(BaseModel):
+class AbsentRequestResponsePublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str

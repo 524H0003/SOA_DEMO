@@ -1,4 +1,5 @@
 import json
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import get_db, init_db
 from .models import AbsentRequest, User
-from .schemas import AbsentRequestCreate, AbsentRequestResponse, PubSubEnvelope
+from .schemas import AbsentRequestCreate, AbsentRequestResponsePublic, PubSubEnvelope
 from .schemas_auth import Token, TokenPayload, UserCreate, UserLogin
 from .services.gmail import send_absent_request
 from .services.gmail_watch import decode_pubsub_data, sync_history, start_watch
@@ -57,12 +58,12 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     # Get token from cookie
     token = request.cookies.get("access_token")
     if not token:
         raise credentials_exception
-    
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -105,7 +106,7 @@ def verify_pubsub_oidc_token(req: Request) -> bool:
             return False
         return True
     except Exception as e:
-        print("verifiy oauth2 error", auth_header, token, settings.pubsub_oidc_audience, e)
+
         return False
 
 
@@ -138,31 +139,36 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/absent-requests", response_model=list[AbsentRequestResponse])
+@app.get("/api/absent-requests", response_model=list[AbsentRequestResponsePublic])
 def list_absent_requests(
     db: Session = Depends(get_db),
-) -> list[AbsentRequestResponse]:
-    requests = db.scalars(select(AbsentRequest).order_by(AbsentRequest.created_at.desc()))
-    return [
-        AbsentRequestResponse.model_validate(request) for request in requests
-    ]
+) -> list[AbsentRequestResponsePublic]:
+    requests = db.scalars(
+        select(AbsentRequest).order_by(AbsentRequest.created_at.desc())
+    )
+    return [AbsentRequestResponsePublic.model_validate(request) for request in requests]
 
 
 @app.post(
     "/api/absent-requests",
-    response_model=AbsentRequestResponse,
+    response_model=AbsentRequestResponsePublic,
     status_code=status.HTTP_201_CREATED,
 )
 def create_absent_request(
     payload: AbsentRequestCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> AbsentRequestResponse:
+) -> AbsentRequestResponsePublic:
     if not settings.manager_email:
         raise HTTPException(status_code=500, detail="MANAGER_EMAIL is not configured")
+
+    # Generate a random 6-character security code
+    security_code = secrets.token_hex(3).upper()
+
     request = AbsentRequest(
         **payload.model_dump(),
         employee_id=current_user.id,
+        security_code=security_code,
     )
     try:
         db.add(request)
@@ -173,7 +179,7 @@ def create_absent_request(
         db.rollback()
         raise HTTPException(status_code=503, detail=str(error)) from error
     db.refresh(request)
-    return AbsentRequestResponse.model_validate(request)
+    return AbsentRequestResponsePublic.model_validate(request)
 
 
 @app.post("/api/webhooks/gmail", status_code=status.HTTP_204_NO_CONTENT)
@@ -186,7 +192,7 @@ async def gmail_webhook(
     if settings.pubsub_oidc_audience:
         if not verify_pubsub_oidc_token(req):
             raise HTTPException(status_code=401, detail="Invalid OIDC token")
-    
+
     try:
         notification = decode_pubsub_data(envelope.message.data)
         history_id = notification["historyId"]
@@ -197,9 +203,9 @@ async def gmail_webhook(
         ) from error
 
 
-@app.post(
-    "/api/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED
-)
+# @app.post(
+#     "/api/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED
+# )
 def register_user(
     payload: UserCreate,
     db: Session = Depends(get_db),
@@ -226,9 +232,9 @@ def login_user(
     user = db.scalar(select(User).where(User.username == payload.username))
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
-    
+
     token = create_access_token(user.username, user.is_admin)
-    
+
     # Set JWT token in HttpOnly cookie
     response.set_cookie(
         key="access_token",
@@ -238,7 +244,7 @@ def login_user(
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
-    
+
     return {"message": "Login successful", "user": user.username}
 
 
@@ -246,11 +252,15 @@ def login_user(
 def get_current_user_info(
     current_user: User = Depends(get_current_active_user),
 ):
-    return {"username": current_user.username, "email": current_user.email, "is_admin": current_user.is_admin}
+    return {
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_admin": current_user.is_admin,
+    }
+
 
 @app.post("/api/auth/logout")
 def logout_user(response: Response):
     # Clear the JWT cookie
     response.delete_cookie("access_token")
     return {"message": "Logout successful"}
-

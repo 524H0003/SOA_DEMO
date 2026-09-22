@@ -43,6 +43,7 @@ class AbsentRequest(Base):
     status: Mapped[str] = mapped_column(String(20), default=AbsentStatus.PENDING.value)
     gmail_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     decision_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    security_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
