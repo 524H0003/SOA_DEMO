@@ -44,13 +44,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function login(payload: LoginPayload) {
-  return request<AuthToken>("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export function createAbsentRequest(payload: AbsentRequestFormPayload) {
   return request<AbsentRequest>("/api/absent-requests", {
     method: "POST",

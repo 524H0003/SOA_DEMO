@@ -188,7 +188,6 @@ def create_absent_request(
 async def gmail_webhook(
     req: Request,
     envelope: PubSubEnvelope,
-    token: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> None:
     # Xác thực OIDC token từ Pub/Sub

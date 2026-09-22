@@ -27,7 +27,7 @@ credentials_base64=$(encode_base64 "$CREDENTIALS_FILE")
 token_base64=$(encode_base64 "$TOKEN_FILE")
 
 printf 'Building image %s...\n' "$IMAGE_NAME"
-docker build --no-cache --tag "$IMAGE_NAME" "$ROOT_DIR"
+docker build --tag "$IMAGE_NAME" "$ROOT_DIR"
 
 docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true
 
