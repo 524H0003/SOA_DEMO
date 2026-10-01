@@ -1,9 +1,18 @@
 import json
+import logging
 import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, status, Request, Response
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    status,
+    Request,
+    Response,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -11,7 +20,7 @@ import bcrypt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .config import get_settings
+from .config import Settings, get_settings
 from .db import get_db, init_db
 from .models import AbsentRequest, User
 from .schemas import AbsentRequestCreate, AbsentRequestResponsePublic, PubSubEnvelope
@@ -22,6 +31,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
@@ -182,11 +192,21 @@ def create_absent_request(
     return AbsentRequestResponsePublic.model_validate(request)
 
 
+def run_sync_history_safe(settings: Settings, history_id: str) -> None:
+    db = next(get_db())
+    try:
+        sync_history(db, settings, history_id)
+    except Exception as e:
+        logger.error(f"Lỗi khi sync history_id {history_id}: {e}", exc_info=True)
+    finally:
+        db.close()
+
+
 @app.post("/api/webhooks/gmail", status_code=status.HTTP_204_NO_CONTENT)
 async def gmail_webhook(
     req: Request,
     envelope: PubSubEnvelope,
-    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks,
 ) -> None:
     # Xác thực OIDC token từ Pub/Sub
     if settings.pubsub_oidc_audience:
@@ -196,7 +216,9 @@ async def gmail_webhook(
     try:
         notification = decode_pubsub_data(envelope.message.data)
         history_id = notification["historyId"]
-        sync_history(db, settings, history_id)
+
+        background_tasks.add_task(run_sync_history_safe, settings, history_id)
+
     except (KeyError, ValueError, json.JSONDecodeError) as error:
         raise HTTPException(
             status_code=400, detail="Invalid Gmail notification"

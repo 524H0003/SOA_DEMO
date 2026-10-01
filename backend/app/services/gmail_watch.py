@@ -66,7 +66,6 @@ def sync_history(db: Session, settings: Settings, history_id: str) -> int:
     for history in result.get("history", []):
         for entry in history.get("messagesAdded", []):
             message = service.users().messages().get(userId="me", id=entry["message"]["id"], format="full").execute()
-            print(message)
             processed += int(process_message(db, message))
     state.last_history_id = history_id
     db.commit()
