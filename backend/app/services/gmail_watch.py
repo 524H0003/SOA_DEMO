@@ -26,7 +26,7 @@ def _message_text(payload: dict[str, Any]) -> str:
     return next((t for p in payload.get("parts", []) if (t := _message_text(p))), "")
 
 
-REQUEST_ID_IN_SUBJECT = re.compile(r"AR-([a-f0-9-]{36})", re.I)
+REQUEST_ID_IN_SUBJECT = re.compile(r"([a-f0-9-]{36})", re.I)
 
 
 def _extract_request_id_from_subject(subject: str) -> uuid.UUID | None:
