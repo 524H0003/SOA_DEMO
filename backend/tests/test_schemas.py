@@ -20,19 +20,18 @@ def test_absent_request_rejects_reversed_dates() -> None:
             reason="Family event",
         )
 
+
 def test_parse_decision_accepts_command_with_security_code() -> None:
     request_id = uuid.uuid4()
     security_code = "ABC123"
-    result = parse_decision(f"Re: Absent request AR-{request_id}\nAPPROVE {security_code}")
+    result = parse_decision(f"{request_id}\nAPPROVE {security_code}")
     assert result == ("approve", request_id, security_code)
 
 
 def test_parse_decision_rejects_invalid_security_code() -> None:
     request_id = uuid.uuid4()
     # Missing security code
-    assert parse_decision(f"Re: Absent request AR-{request_id}\nAPPROVE AR-{request_id}") is None
-    # Invalid format
-    assert parse_decision(f"Re: Absent request AR-{request_id}\nAPPROVE AR-{request_id} CODE-") is None
+    assert parse_decision(f"{request_id}\nAPPROVE") is None
 
 
 def test_parse_decision_rejects_unstructured_reply() -> None:
@@ -44,11 +43,11 @@ def test_parse_decision_ignores_quoted_original_email() -> None:
     request_id = uuid.uuid4()
     # Simulate a reply where first line is "OK" but quoted text contains APPROVE command
     email_text = (
-        f"Re: Absent request AR-{request_id}\n"
+        f"Re: {request_id}\n"
         f"OK\n"
         f"\n"
         f"On Mon, Sep 21, 2026 at 10:00 AM, System <system@example.com> wrote:\n"
-        f"> APPROVE AR-{request_id} CODE-ABC123\n"
+        f"> APPROVE CODE-ABC123\n"
     )
     # Should return None because first non-empty line is "OK", not the command
     assert parse_decision(email_text) is None
@@ -59,7 +58,7 @@ def test_parse_decision_accepts_first_line_command() -> None:
     request_id = uuid.uuid4()
     security_code = "ABC123"
     email_text = (
-        f"Re: Absent request AR-{request_id}\n"
+        f"Re: {request_id}\n"
         f"APPROVE {security_code}\n"
         f"\n"
         f"On Mon, Sep 21, 2026 at 10:00 AM, System <system@example.com> wrote:\n"
@@ -70,9 +69,17 @@ def test_parse_decision_accepts_first_line_command() -> None:
 
 
 def test_decision_links_send_to_system_mailbox() -> None:
-    settings = Settings(gmail_sender="system@example.com", email_template_file="templates/absent_request.html")
+    settings = Settings(
+        gmail_sender="system@example.com",
+        email_template_file="templates/absent_request.html",
+    )
     request_id = uuid.uuid4()
-    user = User(id=uuid.uuid4(), username="Nguyen Van A", email="employee@example.com", hashed_password="hashed")
+    user = User(
+        id=uuid.uuid4(),
+        username="Nguyen Van A",
+        email="employee@example.com",
+        hashed_password="hashed",
+    )
     request = AbsentRequest(
         id=request_id,
         employee_id=user.id,
@@ -93,9 +100,17 @@ def test_decision_links_send_to_system_mailbox() -> None:
 
 
 def test_html_template_contains_two_decision_buttons() -> None:
-    settings = Settings(gmail_sender="system@example.com", email_template_file="templates/absent_request.html")
+    settings = Settings(
+        gmail_sender="system@example.com",
+        email_template_file="templates/absent_request.html",
+    )
     request_id = uuid.uuid4()
-    user = User(id=uuid.uuid4(), username="Nguyen Van A", email="employee@example.com", hashed_password="hashed")
+    user = User(
+        id=uuid.uuid4(),
+        username="Nguyen Van A",
+        email="employee@example.com",
+        hashed_password="hashed",
+    )
     request = AbsentRequest(
         id=request_id,
         employee_id=user.id,
@@ -146,10 +161,10 @@ def test_process_message_validates_security_code() -> None:
     from app.models import AbsentStatus
     from sqlalchemy.orm import Session
     from unittest.mock import MagicMock
-    
+
     # Create a mock database session
     db = MagicMock(spec=Session)
-    
+
     # Create a mock request with security_code
     request_id = uuid.uuid4()
     request = AbsentRequest(
@@ -162,38 +177,46 @@ def test_process_message_validates_security_code() -> None:
         security_code="ABC123",
         status=AbsentStatus.PENDING.value,
     )
-    
+
     # Mock the database query to return our request
     db.scalar.return_value = request
-    
+
     # Create a mock message with correct security code
     message = {
         "id": "msg-123",
         "payload": {
-            "headers": [{"name": "Subject", "value": f"Re: Absent request AR-{request_id}"}],
-            "body": {"data": base64.urlsafe_b64encode(f"APPROVE ABC123".encode()).decode()},
-        }
+            "headers": [
+                {"name": "Subject", "value": request_id}
+            ],
+            "body": {
+                "data": base64.urlsafe_b64encode(f"APPROVE ABC123".encode()).decode()
+            },
+        },
     }
-    
+
     # Test with correct security code - should succeed
     result = process_message(db, message)
     assert result is True
     assert request.status == AbsentStatus.APPROVED.value
     assert request.decision_message_id == "msg-123"
-    
+
     # Reset for next test
     request.status = AbsentStatus.PENDING.value
     request.decision_message_id = None
-    
+
     # Create a mock message with incorrect security code
     message_wrong_code = {
         "id": "msg-456",
         "payload": {
-            "headers": [{"name": "Subject", "value": f"Re: Absent request AR-{request_id}"}],
-            "body": {"data": base64.urlsafe_b64encode(f"APPROVE WRONG".encode()).decode()},
-        }
+            "headers": [
+                {"name": "Subject", "value": request_id}
+            ],
+            "body": {
+                "data": base64.urlsafe_b64encode(f"APPROVE WRONG".encode()).decode()
+            },
+        },
     }
-    
+
     # Test with wrong security code - should fail
     result = process_message(db, message_wrong_code)
     assert result is False
