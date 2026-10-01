@@ -20,17 +20,10 @@ def test_absent_request_rejects_reversed_dates() -> None:
             reason="Family event",
         )
 
-
-def test_parse_decision_accepts_command_with_request_id() -> None:
-    request_id = uuid.uuid4()
-    # Old format without security code should return None now
-    assert parse_decision(f"Re: Absent request AR-{request_id}\nAPPROVE AR-{request_id}") is None
-
-
 def test_parse_decision_accepts_command_with_security_code() -> None:
     request_id = uuid.uuid4()
     security_code = "ABC123"
-    result = parse_decision(f"Re: Absent request AR-{request_id}\nAPPROVE AR-{request_id} CODE-{security_code}")
+    result = parse_decision(f"Re: Absent request AR-{request_id}\nAPPROVE {security_code}")
     assert result == ("approve", request_id, security_code)
 
 
@@ -55,7 +48,7 @@ def test_parse_decision_ignores_quoted_original_email() -> None:
         f"OK\n"
         f"\n"
         f"On Mon, Sep 21, 2026 at 10:00 AM, System <system@example.com> wrote:\n"
-        f"> APPROVE AR-{request_id}\n"
+        f"> APPROVE AR-{request_id} CODE-ABC123\n"
     )
     # Should return None because first non-empty line is "OK", not the command
     assert parse_decision(email_text) is None
@@ -67,13 +60,13 @@ def test_parse_decision_accepts_first_line_command() -> None:
     security_code = "ABC123"
     email_text = (
         f"Re: Absent request AR-{request_id}\n"
-        f"APPROVE AR-{request_id} CODE-{security_code}\n"
+        f"APPROVE {security_code}\n"
         f"\n"
         f"On Mon, Sep 21, 2026 at 10:00 AM, System <system@example.com> wrote:\n"
-        f"> REJECT AR-{request_id} CODE-{security_code}\n"
+        f"> REJECT {security_code}\n"
     )
     # Should match the first line "APPROVE" not the quoted "REJECT"
-    assert parse_decision(email_text) == ("approve", request_id, security_code)
+    assert parse_decision(email_text) == ("approve", request_id, "ABC123")
 
 
 def test_decision_links_send_to_system_mailbox() -> None:
@@ -95,8 +88,8 @@ def test_decision_links_send_to_system_mailbox() -> None:
     reject_link = build_decision_mailto(request, settings, "REJECT")
 
     assert approve_link.startswith("mailto:system@example.com?")
-    assert f"APPROVE%20AR-{request_id}%20CODE-ABC123" in approve_link
-    assert f"REJECT%20AR-{request_id}%20CODE-ABC123" in reject_link
+    assert f"APPROVE%20ABC123" in approve_link
+    assert f"REJECT%20ABC123" in reject_link
 
 
 def test_html_template_contains_two_decision_buttons() -> None:
@@ -117,7 +110,7 @@ def test_html_template_contains_two_decision_buttons() -> None:
     content = build_html(request, settings)
 
     assert "Approve" in content
-    assert "CODE-ABC123" in content
+    assert "ABC123" in content
     assert "Disapprove" in content
     assert "mailto:system@example.com" in content
 
@@ -178,7 +171,7 @@ def test_process_message_validates_security_code() -> None:
         "id": "msg-123",
         "payload": {
             "headers": [{"name": "Subject", "value": f"Re: Absent request AR-{request_id}"}],
-            "body": {"data": base64.urlsafe_b64encode(f"APPROVE AR-{request_id} CODE-ABC123".encode()).decode()},
+            "body": {"data": base64.urlsafe_b64encode(f"APPROVE ABC123".encode()).decode()},
         }
     }
     
@@ -197,7 +190,7 @@ def test_process_message_validates_security_code() -> None:
         "id": "msg-456",
         "payload": {
             "headers": [{"name": "Subject", "value": f"Re: Absent request AR-{request_id}"}],
-            "body": {"data": base64.urlsafe_b64encode(f"APPROVE AR-{request_id} CODE-WRONG".encode()).decode()},
+            "body": {"data": base64.urlsafe_b64encode(f"APPROVE WRONG".encode()).decode()},
         }
     }
     

@@ -1,4 +1,5 @@
 import base64, json, re, uuid
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -9,6 +10,8 @@ from ..config import Settings
 from ..models import AbsentRequest, AbsentStatus, GmailSyncState
 from .email import parse_decision
 from .gmail import gmail_service
+
+logger = logging.getLogger(__name__)
 
 
 def _header(headers: list[dict[str, str]], name: str) -> str:
@@ -72,6 +75,16 @@ def process_message(db: Session, message: dict[str, Any]) -> bool:
     
     _update_request_status(request, action, message.get("id"))
     db.commit()
+    
+    # Log the decision
+    logger.info(
+        "Absent request %s %s by %s (employee: %s)",
+        request_id,
+        "approved" if action == "approve" else "rejected",
+        message.get("id"),
+        request.user.username if request.user else "unknown"
+    )
+    
     return True
 
 
