@@ -33,9 +33,9 @@ def parse_decision(text: str) -> tuple[str, uuid.UUID, str] | None:
                 decision = match.group(1).lower()
                 security_code = match.group(2)
                 subject_line = lines[0] if len(lines) > 0 else ""
-                request_id_match = re.search(r"AR-([a-f0-9-]{36})", subject_line)
+                request_id_match = re.search(r"[a-f0-9-]{36}", subject_line)
                 if request_id_match:
-                    request_id = request_id_match.group(1)
+                    request_id = request_id_match.group(0)
                     return decision, uuid.UUID(request_id), security_code
             break  # Only check the first non-empty line
     return None
