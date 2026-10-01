@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     pubsub_oidc_topic: str = ""
     pubsub_service_account_email: str = ""
     public_api_url: str = "http://localhost:8000"
+    gmail_sync_state_id: int = 1
+    secret_key: str = ""
 
 
 @lru_cache

@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 # JWT settings
-SECRET_KEY = secrets.token_hex(16)  # Change this in production
+SECRET_KEY = get_settings().secret_key or secrets.token_hex(16)  # Change this in production
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -144,6 +144,15 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    """Add request ID to logs for tracing."""
+    request_id = secrets.token_hex(8)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @app.get("/api/health")

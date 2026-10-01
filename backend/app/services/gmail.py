@@ -16,6 +16,7 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 
 def gmail_service(settings: Settings) -> Any:
+    """Get Gmail service instance (returns googleapiclient.discovery.Resource)."""
     token_path = Path(settings.gmail_token_file)
     credentials = _load_token(settings, token_path)
     if credentials and credentials.expired and credentials.refresh_token:

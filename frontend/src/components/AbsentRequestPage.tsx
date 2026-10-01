@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listAbsentRequests, createAbsentRequest } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +29,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  formatDate,
+  getStatusLabel,
+  getStatusColor,
+  formatRequestId,
+} from "@/lib/utils";
 
 interface AbsentRequest {
   id: number;
@@ -81,25 +87,29 @@ export function AbsentRequestPage() {
     },
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    },
+    [],
+  );
 
-  const handleSelectChange = (value: string) => {
+  const handleSelectChange = useCallback((value: string) => {
     setFormData((prev) => ({ ...prev, absent_type: value }));
-  };
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createRequestMutation.mutate(formData);
-  };
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      createRequestMutation.mutate(formData);
+    },
+    [formData, createRequestMutation],
+  );
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
-  };
+  }, []);
 
   return (
     <div className="container mx-auto py-8">
@@ -209,32 +219,7 @@ export function AbsentRequestPage() {
               </TableHeader>
               <TableBody>
                 {requests.map((request: AbsentRequest) => (
-                  <TableRow key={request.id}>
-                    <TableCell>
-                      AR-{request.id.toString().padStart(3, "0")}
-                    </TableCell>
-                    <TableCell>{request.absent_type}</TableCell>
-                    <TableCell>
-                      {request.start_date} → {request.end_date}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          request.status === "approved"
-                            ? "bg-green-100 text-green-800"
-                            : request.status === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {request.status.charAt(0).toUpperCase() +
-                          request.status.slice(1)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(request.created_at).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
+                  <RequestRow key={request.id} request={request} />
                 ))}
               </TableBody>
             </Table>
@@ -244,3 +229,23 @@ export function AbsentRequestPage() {
     </div>
   );
 }
+
+const RequestRow = memo(({ request }: { request: AbsentRequest }) => (
+  <TableRow key={request.id}>
+    <TableCell>{formatRequestId(request.id)}</TableCell>
+    <TableCell>{request.absent_type}</TableCell>
+    <TableCell>
+      {formatDate(request.start_date)} → {formatDate(request.end_date)}
+    </TableCell>
+    <TableCell>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+          request.status,
+        )}`}
+      >
+        {getStatusLabel(request.status)}
+      </span>
+    </TableCell>
+    <TableCell>{formatDate(request.created_at)}</TableCell>
+  </TableRow>
+));
