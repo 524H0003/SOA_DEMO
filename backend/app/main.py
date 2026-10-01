@@ -3,6 +3,7 @@ import logging
 import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from threading import Lock
 
 from fastapi import (
     BackgroundTasks,
@@ -29,6 +30,7 @@ from .services.gmail import send_absent_request
 from .services.gmail_watch import decode_pubsub_data, sync_history, start_watch
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from googleapiclient.errors import HttpError
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -192,14 +194,27 @@ def create_absent_request(
     return AbsentRequestResponsePublic.model_validate(request)
 
 
+_sync_lock = Lock()
+
+
 def run_sync_history_safe(settings: Settings, history_id: str) -> None:
+    if not _sync_lock.acquire(blocking=False):
+        logger.info(f"Đã có tiến trình sync đang chạy. Bỏ qua history_id {history_id}")
+        return
+
     db = next(get_db())
     try:
         sync_history(db, settings, history_id)
+    except HttpError as error:
+        if error.resp.status == 403 and "rateLimitExceeded" in str(error):
+            logger.warning("Chạm hạn ngạch Gmail API, sẽ tự hồi phục ở đợt sync sau.")
+        else:
+            logger.error(f"Lỗi Gmail API khi sync {history_id}: {error}", exc_info=True)
     except Exception as e:
-        logger.error(f"Lỗi khi sync history_id {history_id}: {e}", exc_info=True)
+        logger.error(f"Lỗi hệ thống khi sync {history_id}: {e}", exc_info=True)
     finally:
         db.close()
+        _sync_lock.release()
 
 
 @app.post("/api/webhooks/gmail", status_code=status.HTTP_204_NO_CONTENT)

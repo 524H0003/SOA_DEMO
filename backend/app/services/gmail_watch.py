@@ -45,7 +45,11 @@ def process_message(db: Session, message: dict[str, Any]) -> bool:
         return False
     if request.security_code != security_code:
         return False
-    request.status = AbsentStatus.APPROVED.value if action == "approve" else AbsentStatus.REJECTED.value
+    request.status = (
+        AbsentStatus.APPROVED.value
+        if action == "approve"
+        else AbsentStatus.REJECTED.value
+    )
     request.decision_message_id = message.get("id")
     request.decided_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
@@ -55,18 +59,60 @@ def process_message(db: Session, message: dict[str, Any]) -> bool:
 def sync_history(db: Session, settings: Settings, history_id: str) -> int:
     service = gmail_service(settings)
     state = db.scalar(select(GmailSyncState).where(GmailSyncState.id == 1))
+
     if state is None:
         state = GmailSyncState(id=1, last_history_id=history_id)
         db.add(state)
         db.commit()
         return 0
+
     start_id = state.last_history_id or history_id
-    result = service.users().history().list(userId="me", startHistoryId=start_id).execute()
+
+    result = (
+        service.users()
+        .history()
+        .list(userId="me", startHistoryId=start_id, historyTypes=["messageAdded"])
+        .execute()
+    )
+
     processed = 0
+    processed_msg_ids = set()
+
     for history in result.get("history", []):
         for entry in history.get("messagesAdded", []):
-            message = service.users().messages().get(userId="me", id=entry["message"]["id"], format="full").execute()
+            msg_id = entry["message"]["id"]
+            if msg_id in processed_msg_ids:
+                continue
+            processed_msg_ids.add(msg_id)
+
+            # BƯỚC 1: Chỉ lấy Metadata (tốn ít Quota hơn nhiều)
+            meta = (
+                service.users()
+                .messages()
+                .get(
+                    userId="me",
+                    id=msg_id,
+                    format="metadata",
+                    metadataHeaders=["Subject"],
+                )
+                .execute()
+            )
+
+            headers = meta.get("payload", {}).get("headers", [])
+            subject = _header(headers, "Subject")
+
+            if not parse_decision(subject):
+                continue
+
+            message = (
+                service.users()
+                .messages()
+                .get(userId="me", id=msg_id, format="full")
+                .execute()
+            )
+
             processed += int(process_message(db, message))
+
     state.last_history_id = history_id
     db.commit()
     return processed
@@ -83,4 +129,8 @@ def start_watch(settings: Settings) -> dict[str, Any]:
         raise RuntimeError("PUBSUB_OIDC_TOPIC is required to start Gmail watch")
     # Extract project from audience: projects/{project}/topics/{topic}
     topic = settings.pubsub_oidc_topic
-    return service.users().watch(userId="me", body={"topicName": topic, "labelIds": ["INBOX"]}).execute()
+    return (
+        service.users()
+        .watch(userId="me", body={"topicName": topic, "labelIds": ["INBOX"]})
+        .execute()
+    )
