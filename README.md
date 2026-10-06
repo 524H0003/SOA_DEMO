@@ -38,19 +38,6 @@ Hoặc mount `GMAIL_TOKEN_FILE` vào container. Trên VPS, dùng Nginx reverse p
 
 Quản lý phản hồi email bằng đúng cú pháp `APPROVE AR-1` hoặc `REJECT AR-1`. Backend xác nhận email đến từ đúng `manager_email`, đọc Gmail History API sau thông báo Pub/Sub, rồi frontend tự polling để hiển thị trạng thái mới. `mailto:` chỉ mở email soạn sẵn; nó không phải callback.
 
-## Chạy trên VPS bằng Docker
-
-Yêu cầu: Docker Compose plugin, domain đã trỏ DNS A/AAAA về VPS và có một reverse proxy HTTPS ở trước container. Container này chỉ mở HTTP port `80`; Pub/Sub cần gọi URL HTTPS của reverse proxy.
-
-```bash
-cp .env.docker.example .env
-mkdir -p secrets
-# Copy Google OAuth client JSON vào secrets/credentials.json
-docker compose build
-docker compose up -d
-docker compose exec app python start_watch.py
-```
-
 ### Build và chạy nhanh bằng Docker
 
 Nếu credential đã nằm trong `backend/credentials.json`, token đã nằm trong
@@ -67,5 +54,3 @@ Có thể đổi cổng hoặc tên image/container:
 ```bash
 HOST_PORT=80 IMAGE_NAME=absent-desk CONTAINER_NAME=absent-desk ./build-and-run.sh
 ```
-
-Nginx trong image phục vụ static frontend và proxy `/api` tới Uvicorn nội bộ. Pub/Sub push URL dùng `https://<APP_DOMAIN>/api/webhooks/gmail?token=<PUBSUB_VERIFICATION_TOKEN>` qua Nginx reverse proxy HTTPS của VPS. Dữ liệu SQLite và Gmail token nằm trong Docker volume `app_data`; OAuth client nằm ở `secrets/` và chỉ được mount read-only vào app. Không commit `.env`, `secrets/` hoặc credential Google vào git.
